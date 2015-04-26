@@ -62,6 +62,10 @@ func main() {
 		}
 	}
 
+	if *server == "" {
+		*server = xmpplookup(*username)
+	}
+
 	if *stdout == "" {
 		*stdout = roomname()
 		fmt.Fprintf(os.Stderr, "room:%s\n", *stdout)
@@ -74,7 +78,8 @@ func main() {
 
 	var talk *xmpp.Client
 	var err error
-	options := xmpp.Options{Host: *server,
+	options := xmpp.Options{
+		Host:          *server,
 		User:          *username,
 		Password:      *password,
 		NoTLS:         *notls,
@@ -212,6 +217,11 @@ func roomname() string {
 	return fmt.Sprintf("stdout-%s@conference.%s",
 		strings.ToLower(base32.StdEncoding.EncodeToString(id)),
 		tokens[1])
+}
+
+func xmpplookup(jid string) string {
+	server := strings.Split(jid, "@")[1]
+	return fmt.Sprintf("%s:5222", server)
 }
 
 func serverName(host string) string {
