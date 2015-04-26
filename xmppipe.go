@@ -28,6 +28,8 @@ import (
 	"time"
 )
 
+var version = "0.1.0"
+
 type stdio struct {
 	buf string
 	err error
@@ -51,7 +53,8 @@ var keepalive = flag.Int("keepalive", 60000, "Keepalive sent after inactivity (m
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "usage: xmppipe [options]\n")
+		fmt.Fprintf(os.Stderr, "usage: xmppipe [options] (version: %s)\n",
+                version)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
