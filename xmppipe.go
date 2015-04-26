@@ -24,6 +24,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -52,13 +53,18 @@ var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
 var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
 
 func main() {
+	if os.Getenv("GOMAXPROCS") == "" {
+		runtime.GOMAXPROCS(runtime.NumCPU())
+	}
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: xmppipe [options] (version: %s)\n",
-                version)
+			version)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
 	flag.Parse()
+
 	if *username == "" || *password == "" {
 		*username, *password = xmpp_account()
 		if *username == "" || *password == "" {
