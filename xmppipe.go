@@ -49,7 +49,7 @@ var session = flag.Bool("session", true, "use server session")
 var noverify = flag.Bool("noverify", false, "verify server SSL certificate")
 var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants in MUC)")
 var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
-var keepalive = flag.Int("keepalive", 60000, "Keepalive sent after inactivity (ms)")
+var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
 
 func main() {
 	flag.Usage = func() {
@@ -149,7 +149,7 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-		case <-time.After(time.Duration(*keepalive) * time.Millisecond):
+		case <-time.After(time.Duration(*keepalive) * time.Second):
 			_, err = talk.SendOrg(" ")
 			if err != nil {
 				log.Fatal(err)
