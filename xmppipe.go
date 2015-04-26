@@ -42,7 +42,7 @@ var password = flag.String("password", "", "password")
 var status = flag.String("status", "xa", "status")
 var statusMessage = flag.String("status-msg", "stdin", "status message")
 var stdout = flag.String("stdout", "", "XMPP MUC (multiuser chatroom)")
-var nick = flag.String("nick", "xmppipe", "nickname")
+var resource = flag.String("resource", "xmppipe", "resource")
 var notls = flag.Bool("notls", true, "No TLS")
 var debug = flag.Bool("debug", false, "debug output")
 var eof = flag.Bool("eof", true, "Exit on EOF")
@@ -114,7 +114,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	talk.JoinMUC(*stdout, *nick)
+	talk.JoinMUC(*stdout, *resource)
 
 	var occupants int
 	signal := open_stdout(talk)
@@ -188,7 +188,7 @@ func open_stdout(talk *xmpp.Client) chan xmpp.Presence {
 	signal := make(chan xmpp.Presence)
 
 	go func() {
-		jid := fmt.Sprintf("%s/%s", *stdout, *nick)
+		jid := fmt.Sprintf("%s/%s", *stdout, *resource)
 
 		for {
 			chat, err := talk.Recv()
