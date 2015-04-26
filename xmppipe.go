@@ -22,6 +22,7 @@ import (
 	"github.com/mattn/go-xmpp"
 	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -62,9 +63,7 @@ func main() {
 		}
 	}
 
-	if *server == "" {
-		*server = xmpplookup(*username)
-	}
+	servers := xmpplookup(*username, *server)
 
 	if *stdout == "" {
 		*stdout = roomname()
@@ -78,18 +77,29 @@ func main() {
 
 	var talk *xmpp.Client
 	var err error
-	options := xmpp.Options{
-		Host:          *server,
-		User:          *username,
-		Password:      *password,
-		NoTLS:         *notls,
-		Debug:         *debug,
-		Session:       *session,
-		Status:        *status,
-		StatusMessage: *statusMessage,
-	}
 
-	talk, err = options.NewClient()
+	for _, host := range servers {
+		options := xmpp.Options{
+			Host:          host,
+			User:          *username,
+			Password:      *password,
+			NoTLS:         *notls,
+			Debug:         *debug,
+			Session:       *session,
+			Status:        *status,
+			StatusMessage: *statusMessage,
+		}
+
+		talk, err = options.NewClient()
+
+		if err == nil {
+			break
+		}
+
+		if *debug {
+			fmt.Fprintln(os.Stderr, host, err)
+		}
+	}
 
 	if err != nil {
 		log.Fatal(err)
@@ -219,9 +229,20 @@ func roomname() string {
 		tokens[1])
 }
 
-func xmpplookup(jid string) string {
-	server := strings.Split(jid, "@")[1]
-	return fmt.Sprintf("%s:5222", server)
+func xmpplookup(jid, server string) []string {
+	if server != "" {
+		return []string{server}
+	}
+
+	var servers []string
+
+	host := strings.Split(jid, "@")[1]
+	_, addrs, _ := net.LookupSRV("xmpp-client", "tcp", host)
+	for _, srv := range addrs {
+		servers = append(servers, fmt.Sprintf("%s:%d", srv.Target, srv.Port))
+	}
+
+	return append(servers, fmt.Sprintf("%s:5222", host))
 }
 
 func serverName(host string) string {
