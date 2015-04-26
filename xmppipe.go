@@ -159,17 +159,17 @@ func open_stdin() chan stdio {
 	stdin := make(chan stdio)
 
 	go func() {
-		for {
 			var in stdio
-			fd := bufio.NewReader(os.Stdin)
-			in.buf, in.err = fd.ReadString('\n')
-
-			if in.err != nil {
-				stdin <- in
-			}
-
-			stdin <- in
-		}
+            scanner := bufio.NewScanner(os.Stdin)
+            for scanner.Scan() {
+                in.buf = scanner.Text()
+                stdin <- in
+            }
+            in.err = scanner.Err()
+            if in.err == nil {
+                in.err = io.EOF
+            }
+            stdin <- in
 	}()
 
 	return stdin
