@@ -51,6 +51,7 @@ var noverify = flag.Bool("noverify", false, "verify server SSL certificate")
 var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants in MUC)")
 var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
 var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
+var maxline = flag.Int("maxline", 10, "Number of lines to buffer before sending")
 
 func getenv(key *string, env string) {
 	if *key == "" {
@@ -81,6 +82,10 @@ func main() {
 	getenv(username, "XMPPIPE_USERNAME")
 	getenv(password, "XMPPIPE_PASSWORD")
 
+	if *maxline < 1 {
+		*maxline = 1
+	}
+
 	servers := xmpp_lookup(*username, *server)
 
 	talk, err := xmpp_connect(servers)
@@ -97,8 +102,10 @@ func main() {
 	talk.JoinMUC(*stdout, *resource)
 
 	var occupants int
+
 	signal := open_stdout(talk)
 	stdin := open_stdin()
+	msg := xmpp_send(talk, *maxline)
 
 	for {
 		select {
@@ -131,10 +138,7 @@ func main() {
 			if *sigpipe && occupants == 0 {
 				os.Exit(0)
 			}
-			_, err = talk.Send(xmpp.Chat{Remote: *stdout, Type: "groupchat", Text: in.buf})
-			if err != nil {
-				log.Fatal(err)
-			}
+			msg <- in.buf
 		case <-time.After(time.Duration(*keepalive) * time.Second):
 			_, err = talk.SendOrg(" ")
 			if err != nil {
@@ -235,6 +239,38 @@ func open_stdout(talk *xmpp.Client) chan xmpp.Presence {
 	}()
 
 	return signal
+}
+
+func xmpp_send(talk *xmpp.Client, bufsz int) chan string {
+	msg := make(chan string)
+	year := time.Hour * 24 * 365
+
+	go func() {
+		var buf []string
+		duration := year
+
+		for {
+			select {
+			case m := <-msg:
+				if len(buf) == 0 {
+					duration = time.Duration(1000) * time.Millisecond
+				}
+				buf = append(buf, m)
+				if len(buf) < bufsz {
+					continue
+				}
+			case <-time.After(duration):
+			}
+			_, err := talk.Send(xmpp.Chat{Remote: *stdout, Type: "groupchat", Text: strings.Join(buf, "\n")})
+			if err != nil {
+				log.Fatal(err)
+			}
+			buf = []string{}
+			duration = year
+		}
+	}()
+
+	return msg
 }
 
 func roomname() string {
