@@ -43,10 +43,10 @@ var status = flag.String("status", "xa", "status")
 var statusMessage = flag.String("status-msg", "stdin", "status message")
 var stdout = flag.String("stdout", "", "XMPP MUC (multiuser chatroom)")
 var resource = flag.String("resource", "xmppipe", "resource")
-var notls = flag.Bool("notls", true, "No TLS")
-var debug = flag.Bool("debug", false, "debug output")
-var eof = flag.Bool("eof", true, "Exit on EOF")
-var session = flag.Bool("session", true, "use server session")
+var usetls = flag.Bool("tls", false, "Use TLS")
+var debug = flag.Bool("debug", false, "enable debug output")
+var noeof = flag.Bool("noeof", false, "Don't exit when stdin is closed")
+var nosession = flag.Bool("nosession", false, "disable use of server session")
 var noverify = flag.Bool("noverify", false, "verify server SSL certificate")
 var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants in MUC)")
 var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
@@ -115,11 +115,11 @@ func main() {
 			}
 		case in := <-stdin:
 			if in.err == io.EOF {
-				if *eof {
+				if *noeof {
+					continue
+				} else {
 					talk.Close()
 					os.Exit(0)
-				} else {
-					continue
 				}
 			}
 			if in.err != nil {
@@ -158,9 +158,9 @@ func xmpp_connect(servers []string) (*xmpp.Client, error) {
 			Host:          host,
 			User:          *username,
 			Password:      *password,
-			NoTLS:         *notls,
+			NoTLS:         !*usetls,
 			Debug:         *debug,
-			Session:       *session,
+			Session:       !*nosession,
 			Status:        *status,
 			StatusMessage: *statusMessage,
 		}
