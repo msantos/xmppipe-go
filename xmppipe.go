@@ -52,11 +52,16 @@ var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants
 var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
 var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
 
-func main() {
-	if os.Getenv("GOMAXPROCS") == "" {
-		runtime.GOMAXPROCS(runtime.NumCPU())
+func getenv(key *string, env string) {
+	if *key == "" {
+		*key = os.Getenv(env)
 	}
+	if *key == "" {
+		usage()
+	}
+}
 
+func usage() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "usage: xmppipe [options] (version: %s)\n",
 			version)
@@ -64,16 +69,17 @@ func main() {
 		os.Exit(2)
 	}
 	flag.Parse()
+}
 
-	if *username == "" {
-		*username = os.Getenv("XMPPIPE_USERNAME")
+func main() {
+	usage()
+
+	if os.Getenv("GOMAXPROCS") == "" {
+		runtime.GOMAXPROCS(runtime.NumCPU())
 	}
-	if *password == "" {
-		*password = os.Getenv("XMPPIPE_PASSWORD")
-	}
-	if *username == "" || *password == "" {
-		flag.Usage()
-	}
+
+	getenv(username, "XMPPIPE_USERNAME")
+	getenv(password, "XMPPIPE_PASSWORD")
 
 	servers := xmpp_lookup(*username, *server)
 
