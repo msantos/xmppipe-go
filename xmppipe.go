@@ -107,7 +107,8 @@ func main() {
 	signal := open_stdout(talk, jid)
 	xmpp_waitjoin(signal, jid, &occupants)
 
-	msg := xmpp_send(talk, *maxline)
+	eof := make(chan bool)
+	msg := xmpp_send(talk, *maxline, eof)
 	stdin := open_stdin()
 
 	for {
@@ -122,8 +123,7 @@ func main() {
 				if *noeof {
 					continue
 				} else {
-					talk.Close()
-					os.Exit(0)
+					break
 				}
 			}
 			if in.err != nil {
@@ -133,7 +133,7 @@ func main() {
 				continue
 			}
 			if *sigpipe && occupants == 0 {
-				os.Exit(0)
+                break;
 			}
 			msg <- in.buf
 		case <-time.After(time.Duration(*keepalive) * time.Second):
@@ -142,7 +142,12 @@ func main() {
 				log.Fatal(err)
 			}
 		}
+        eof <-true
+		break
 	}
+
+	<-eof
+	talk.Close()
 }
 
 func xmpp_roomcount(v xmpp.Presence, occupants *int) {
@@ -259,12 +264,13 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 	return signal
 }
 
-func xmpp_send(talk *xmpp.Client, bufsz int) chan string {
+func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 	msg := make(chan string)
 	year := time.Hour * 24 * 365
 
 	go func() {
 		var buf []string
+		var flush = false
 		duration := year
 
 		for {
@@ -277,6 +283,7 @@ func xmpp_send(talk *xmpp.Client, bufsz int) chan string {
 				if len(buf) < bufsz {
 					continue
 				}
+			case flush = <-eof:
 			case <-time.After(duration):
 			}
 			_, err := talk.Send(xmpp.Chat{Remote: *stdout, Type: "groupchat", Text: strings.Join(buf, "\n")})
@@ -285,6 +292,11 @@ func xmpp_send(talk *xmpp.Client, bufsz int) chan string {
 			}
 			buf = []string{}
 			duration = year
+
+			if flush {
+				eof <-true
+				break
+			}
 		}
 	}()
 
