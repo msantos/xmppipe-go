@@ -65,16 +65,19 @@ func main() {
 	}
 	flag.Parse()
 
+	if *username == "" {
+		*username = os.Getenv("XMPPIPE_USERNAME")
+	}
+	if *password == "" {
+		*password = os.Getenv("XMPPIPE_PASSWORD")
+	}
 	if *username == "" || *password == "" {
-		*username, *password = xmpp_account()
-		if *username == "" || *password == "" {
-			flag.Usage()
-		}
+		flag.Usage()
 	}
 
-	servers := xmpplookup(*username, *server)
+	servers := xmpp_lookup(*username, *server)
 
-	talk, err := xmppconnect(servers)
+	talk, err := xmpp_connect(servers)
 
 	if err != nil {
 		log.Fatal(err)
@@ -135,7 +138,7 @@ func main() {
 	}
 }
 
-func xmppconnect(servers []string) (*xmpp.Client, error) {
+func xmpp_connect(servers []string) (*xmpp.Client, error) {
 	var talk *xmpp.Client
 	var err error
 
@@ -228,10 +231,6 @@ func open_stdout(talk *xmpp.Client) chan xmpp.Presence {
 	return signal
 }
 
-func xmpp_account() (username, password string) {
-	return os.Getenv("XMPPIPE_USERNAME"), os.Getenv("XMPPIPE_PASSWORD")
-}
-
 func roomname() string {
 	tokens := strings.SplitN(*username, "@", 2)
 	id := make([]byte, 5)
@@ -244,7 +243,7 @@ func roomname() string {
 		tokens[1])
 }
 
-func xmpplookup(jid, server string) []string {
+func xmpp_lookup(jid, server string) []string {
 	if server != "" {
 		return []string{server}
 	}
