@@ -74,44 +74,15 @@ func main() {
 
 	servers := xmpplookup(*username, *server)
 
-	if *stdout == "" {
-		*stdout = roomname()
-		fmt.Fprintf(os.Stderr, "room:%s\n", *stdout)
-	}
-
-	xmpp.DefaultConfig = tls.Config{
-		ServerName:         serverName(*server),
-		InsecureSkipVerify: *noverify,
-	}
-
-	var talk *xmpp.Client
-	var err error
-
-	for _, host := range servers {
-		options := xmpp.Options{
-			Host:          host,
-			User:          *username,
-			Password:      *password,
-			NoTLS:         *notls,
-			Debug:         *debug,
-			Session:       *session,
-			Status:        *status,
-			StatusMessage: *statusMessage,
-		}
-
-		talk, err = options.NewClient()
-
-		if err == nil {
-			break
-		}
-
-		if *debug {
-			fmt.Fprintln(os.Stderr, host, err)
-		}
-	}
+	talk, err := xmppconnect(servers)
 
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if *stdout == "" {
+		*stdout = roomname()
+		fmt.Fprintf(os.Stderr, "room:%s\n", *stdout)
 	}
 
 	talk.JoinMUC(*stdout, *resource)
@@ -162,6 +133,41 @@ func main() {
 			}
 		}
 	}
+}
+
+func xmppconnect(servers []string) (*xmpp.Client, error) {
+	var talk *xmpp.Client
+	var err error
+
+	xmpp.DefaultConfig = tls.Config{
+		ServerName:         serverName(*server),
+		InsecureSkipVerify: *noverify,
+	}
+
+	for _, host := range servers {
+		options := xmpp.Options{
+			Host:          host,
+			User:          *username,
+			Password:      *password,
+			NoTLS:         *notls,
+			Debug:         *debug,
+			Session:       *session,
+			Status:        *status,
+			StatusMessage: *statusMessage,
+		}
+
+		talk, err = options.NewClient()
+
+		if err == nil {
+			break
+		}
+
+		if *debug {
+			fmt.Fprintln(os.Stderr, host, err)
+		}
+	}
+
+	return talk, err
 }
 
 func open_stdin() chan stdio {
