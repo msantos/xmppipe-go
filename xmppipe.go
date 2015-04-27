@@ -102,21 +102,18 @@ func main() {
 	talk.JoinMUC(*stdout, *resource)
 
 	var occupants int
+	jid := fmt.Sprintf("%s/%s", *stdout, *resource)
 
-	signal := open_stdout(talk)
-	stdin := open_stdin()
+	signal := open_stdout(talk, jid)
+	xmpp_waitjoin(signal, jid, &occupants)
+
 	msg := xmpp_send(talk, *maxline)
+	stdin := open_stdin()
 
 	for {
 		select {
 		case v := <-signal:
-			if v.Type == "" {
-				occupants += 1
-			} else {
-				if occupants > 0 {
-					occupants -= 1
-				}
-			}
+			xmpp_roomcount(v, &occupants)
 			if *sigpipe && occupants == 0 {
 				os.Exit(0)
 			}
@@ -144,6 +141,16 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
+		}
+	}
+}
+
+func xmpp_roomcount(v xmpp.Presence, occupants *int) {
+	if v.Type == "" {
+		*occupants += 1
+	} else {
+		if *occupants > 0 {
+			*occupants -= 1
 		}
 	}
 }
@@ -183,6 +190,19 @@ func xmpp_connect(servers []string) (*xmpp.Client, error) {
 	return talk, err
 }
 
+func xmpp_waitjoin(signal chan xmpp.Presence, jid string, occupants *int) {
+	for {
+		select {
+		case v := <-signal:
+			if v.From == jid {
+				break
+			}
+			xmpp_roomcount(v, occupants)
+		}
+		break
+	}
+}
+
 func open_stdin() chan stdio {
 	stdin := make(chan stdio)
 
@@ -203,12 +223,10 @@ func open_stdin() chan stdio {
 	return stdin
 }
 
-func open_stdout(talk *xmpp.Client) chan xmpp.Presence {
+func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 	signal := make(chan xmpp.Presence)
 
 	go func() {
-		jid := fmt.Sprintf("%s/%s", *stdout, *resource)
-
 		for {
 			chat, err := talk.Recv()
 			if err != nil {
@@ -223,7 +241,7 @@ func open_stdout(talk *xmpp.Client) chan xmpp.Presence {
 					fmt.Fprintf(os.Stderr, "%+v\n", v)
 				}
 			case xmpp.Presence:
-				if strings.HasPrefix(v.From, *stdout) && v.From != jid {
+				if strings.HasPrefix(v.From, *stdout) {
 					ptype := v.Type
 					if ptype == "" {
 						ptype = "available"
