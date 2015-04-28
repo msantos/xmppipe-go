@@ -14,9 +14,7 @@ package main
 
 import (
 	"bufio"
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/base32"
 	"flag"
 	"fmt"
 	"github.com/mattn/go-xmpp"
@@ -201,7 +199,7 @@ func xmpp_waitjoin(signal chan xmpp.Presence, jid string, occupants *int) {
 		select {
 		case v := <-signal:
 			if v.From == jid {
-                return
+				return
 			}
 			xmpp_roomcount(v, occupants)
 		}
@@ -306,13 +304,13 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 
 func roomname() string {
 	tokens := strings.SplitN(*username, "@", 2)
-	id := make([]byte, 5)
-	_, err := rand.Read(id)
+	name, err := os.Hostname()
 	if err != nil {
-		log.Fatal(err)
+		name = "unknown"
 	}
-	return fmt.Sprintf("stdout-%s@conference.%s",
-		strings.ToLower(base32.StdEncoding.EncodeToString(id)),
+	return fmt.Sprintf("stdout-%s-%d@conference.%s",
+		name,
+		os.Getpid(),
 		tokens[1])
 }
 
