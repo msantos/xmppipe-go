@@ -116,14 +116,14 @@ func main() {
 		case v := <-signal:
 			xmpp_roomcount(v, &occupants)
 			if *sigpipe && occupants == 0 {
-				os.Exit(0)
+				goto EOF
 			}
 		case in := <-stdin:
 			if in.err == io.EOF {
 				if *noeof {
 					continue
 				} else {
-					break
+					goto EOF
 				}
 			}
 			if in.err != nil {
@@ -133,19 +133,20 @@ func main() {
 				continue
 			}
 			if *sigpipe && occupants == 0 {
-                break;
+				goto EOF
 			}
 			msg <- in.buf
+			continue
 		case <-time.After(time.Duration(*keepalive) * time.Second):
 			_, err = talk.SendOrg(" ")
 			if err != nil {
 				log.Fatal(err)
 			}
 		}
-        eof <-true
-		break
 	}
 
+EOF:
+	eof <- true
 	<-eof
 	talk.Close()
 }
@@ -200,11 +201,10 @@ func xmpp_waitjoin(signal chan xmpp.Presence, jid string, occupants *int) {
 		select {
 		case v := <-signal:
 			if v.From == jid {
-				break
+                return
 			}
 			xmpp_roomcount(v, occupants)
 		}
-		break
 	}
 }
 
@@ -294,10 +294,11 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 			duration = year
 
 			if flush {
-				eof <-true
-				break
+				goto EOF
 			}
 		}
+	EOF:
+		eof <- true
 	}()
 
 	return msg
