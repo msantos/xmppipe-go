@@ -14,6 +14,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/tls"
 	"flag"
 	"fmt"
@@ -39,6 +40,7 @@ var username = flag.String("username", "", "username")
 var password = flag.String("password", "", "password")
 var status = flag.String("status", "xa", "status")
 var statusMessage = flag.String("status-msg", "stdin", "status message")
+var subject = flag.String("subject", "", "MUC subject")
 var stdout = flag.String("stdout", "", "XMPP MUC (multiuser chatroom)")
 var resource = flag.String("resource", "xmppipe", "resource")
 var usetls = flag.Bool("tls", false, "Use TLS")
@@ -98,6 +100,13 @@ func main() {
 	}
 
 	talk.JoinMUC(*stdout, *resource)
+
+	if *subject != "" {
+		_, err = xmpp_subject(talk, *subject)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	var occupants int
 	jid := fmt.Sprintf("%s/%s", *stdout, *resource)
@@ -302,11 +311,18 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 	return msg
 }
 
+func xmpp_subject(talk *xmpp.Client, subject string) (int, error) {
+	stanza := fmt.Sprintf("<message to='%s' type='%s'>"+
+		"<subject>%s</subject></message>",
+		xmlEscape(*stdout), "groupchat", xmlEscape(subject))
+	return talk.SendOrg(stanza)
+}
+
 func roomname() string {
 	tokens := strings.SplitN(*username, "@", 2)
 	name, err := os.Hostname()
 	if err != nil {
-		name = "unknown"
+		name = "nohost"
 	}
 	return fmt.Sprintf("stdout-%s-%d@conference.%s",
 		name,
@@ -332,4 +348,25 @@ func xmpp_lookup(jid, server string) []string {
 
 func serverName(host string) string {
 	return strings.Split(host, ":")[0]
+}
+
+var xmlSpecial = map[byte]string{
+	'<':  "&lt;",
+	'>':  "&gt;",
+	'"':  "&quot;",
+	'\'': "&apos;",
+	'&':  "&amp;",
+}
+
+func xmlEscape(s string) string {
+	var b bytes.Buffer
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if s, ok := xmlSpecial[c]; ok {
+			b.WriteString(s)
+		} else {
+			b.WriteByte(c)
+		}
+	}
+	return b.String()
 }
