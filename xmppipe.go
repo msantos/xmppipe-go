@@ -93,6 +93,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer talk.Close()
 
 	if *stdout == "" {
 		*stdout = roomname()
@@ -126,14 +127,12 @@ func main() {
 				goto EOF
 			}
 		case in := <-stdin:
-			if in.err == io.EOF {
-				if *noeof {
-					continue
-				} else {
-					goto EOF
-				}
-			}
-			if in.err != nil {
+			switch {
+			case *noeof && in.err == io.EOF:
+				continue
+			case in.err == io.EOF:
+				goto EOF
+			case in.err != nil:
 				log.Fatal(in.err)
 			}
 			if *discard && occupants == 0 {
@@ -155,7 +154,6 @@ func main() {
 EOF:
 	eof <- true
 	<-eof
-	talk.Close()
 }
 
 func xmpp_roomcount(v xmpp.Presence, occupants *int) {
