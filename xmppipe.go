@@ -22,6 +22,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"runtime"
 	"strings"
@@ -245,7 +246,8 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 			switch v := chat.(type) {
 			case xmpp.Chat:
 				if v.Remote != jid {
-					fmt.Printf("message:%s:%v:%s\n", v.Type, v.Remote, v.Text)
+					fmt.Printf("message:%s:%v:%s\n", url.QueryEscape(v.Type),
+						url.QueryEscape(v.Remote), url.QueryEscape(v.Text))
 				}
 				if *debug {
 					fmt.Fprintf(os.Stderr, "%+v\n", v)
