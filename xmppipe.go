@@ -36,6 +36,11 @@ type stdio struct {
 	err error
 }
 
+const (
+    tMessage = "m"
+    tPresence = "p"
+)
+
 var server = flag.String("server", "", "server")
 var username = flag.String("username", "", "username")
 var password = flag.String("password", "", "password")
@@ -246,7 +251,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 			switch v := chat.(type) {
 			case xmpp.Chat:
 				if v.Remote != jid {
-					fmt.Printf("message:%s:%v:%s\n", url.QueryEscape(v.Type),
+					fmt.Printf("%s:%s:%v:%s\n", tMessage, url.QueryEscape(v.Type),
 						url.QueryEscape(v.Remote), url.QueryEscape(v.Text))
 				}
 				if *debug {
@@ -259,7 +264,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 						ptype = "available"
 					}
 					signal <- v
-					fmt.Printf("presence:%s:%s:%s:%s\n", ptype, v.From, v.To, v.Show)
+					fmt.Printf("%s:%s:%s:%s:%s\n", tPresence, ptype, v.From, v.To, v.Show)
 				}
 				if *debug {
 					fmt.Fprintf(os.Stderr, "%+v\n", v)
