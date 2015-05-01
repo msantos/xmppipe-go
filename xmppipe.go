@@ -39,7 +39,7 @@ type stdio struct {
 var server = flag.String("server", "", "server")
 var username = flag.String("username", "", "username")
 var password = flag.String("password", "", "password")
-var status = flag.String("status", "xa", "status")
+var status = flag.String("status", "", "status")
 var statusMessage = flag.String("status-msg", "stdin", "status message")
 var subject = flag.String("subject", "", "MUC subject")
 var stdout = flag.String("stdout", "", "XMPP MUC (multiuser chatroom)")
