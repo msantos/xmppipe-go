@@ -98,7 +98,7 @@ func main() {
 
 	if *stdout == "" {
 		*stdout = roomname()
-		fmt.Fprintf(os.Stderr, "room:%s\n", *stdout)
+		fmt.Printf("stdout:%s\n", *stdout)
 	}
 
 	talk.JoinMUC(*stdout, *resource)
