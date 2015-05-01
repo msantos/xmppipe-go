@@ -37,8 +37,8 @@ type stdio struct {
 }
 
 const (
-    tMessage = "m"
-    tPresence = "p"
+	tMessage  = "m"
+	tPresence = "p"
 )
 
 var server = flag.String("server", "", "server")
@@ -264,7 +264,9 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 						ptype = "available"
 					}
 					signal <- v
-					fmt.Printf("%s:%s:%s:%s:%s\n", tPresence, ptype, v.From, v.To, v.Show)
+					fmt.Printf("%s:%s:%s:%s:%s\n", tPresence,
+						url.QueryEscape(ptype), url.QueryEscape(v.From),
+						url.QueryEscape(v.To), url.QueryEscape(v.Show))
 				}
 				if *debug {
 					fmt.Fprintf(os.Stderr, "%+v\n", v)
