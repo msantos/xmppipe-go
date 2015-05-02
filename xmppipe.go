@@ -39,6 +39,7 @@ type stdio struct {
 const (
 	tMessage  = "m"
 	tPresence = "p"
+	tDiscard  = "!"
 )
 
 var server = flag.String("server", "", "server")
@@ -56,6 +57,7 @@ var nosession = flag.Bool("nosession", false, "disable use of server session")
 var noverify = flag.Bool("noverify", false, "verify server SSL certificate")
 var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants in MUC)")
 var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
+var discard_to_stdout = flag.Bool("discard-to-stdout", false, "Write discarded input to the local stdout")
 var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
 var maxline = flag.Int("maxline", 10, "Number of lines to buffer before sending")
 
@@ -142,6 +144,9 @@ func main() {
 				log.Fatal(in.err)
 			}
 			if *discard && occupants == 0 {
+				if *discard_to_stdout {
+					fmt.Printf("%s:%s\n", tDiscard, url.QueryEscape(in.buf))
+				}
 				continue
 			}
 			if *sigpipe && occupants == 0 {
