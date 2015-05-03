@@ -60,6 +60,7 @@ var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
 var discard_to_stdout = flag.Bool("discard-to-stdout", false, "Write discarded input to the local stdout")
 var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
 var maxline = flag.Int("maxline", 10, "Number of lines to buffer before sending")
+var delay = flag.Int("delay", 100, "Timeout (ms) before sending accumulated lines as an XMPP message")
 
 func getenv(key *string, env string) {
 	if *key == "" {
@@ -296,7 +297,7 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 			select {
 			case m := <-msg:
 				if len(buf) == 0 {
-					duration = time.Duration(1000) * time.Millisecond
+					duration = time.Duration(*delay) * time.Millisecond
 				}
 				buf = append(buf, m)
 				if len(buf) < bufsz {
