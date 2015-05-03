@@ -255,7 +255,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
-				if v.Remote != jid {
+				if v.Remote != jid && len(v.Other) == 0 {
 					fmt.Printf("%s:%s:%v:%s\n", tMessage, url.QueryEscape(v.Type),
 						url.QueryEscape(v.Remote), url.QueryEscape(v.Text))
 				}
