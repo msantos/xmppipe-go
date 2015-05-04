@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -90,6 +91,10 @@ func main() {
 
 	getenv(username, "XMPPIPE_USERNAME")
 	getenv(password, "XMPPIPE_PASSWORD")
+
+	if valid, _ := regexp.MatchString(".+@.+", *username); !valid {
+		log.Fatal("Username is not a valid JID:", *username)
+	}
 
 	if *maxline < 1 {
 		*maxline = 1
