@@ -30,7 +30,7 @@ import (
 	"time"
 )
 
-var version = "0.1.0"
+var version = "0.2.0"
 
 type stdio struct {
 	buf string
@@ -43,25 +43,25 @@ const (
 	tDiscard  = "!"
 )
 
-var server = flag.String("server", "", "server")
-var username = flag.String("username", "", "username")
-var password = flag.String("password", "", "password")
-var status = flag.String("status", "", "status")
-var statusMessage = flag.String("status-msg", "stdin", "status message")
-var subject = flag.String("subject", "", "MUC subject")
-var stdout = flag.String("stdout", "", "XMPP MUC (multiuser chatroom)")
-var resource = flag.String("resource", "xmppipe", "resource")
-var usetls = flag.Bool("tls", false, "Use TLS")
+var server = flag.String("server", "", "XMPP server")
+var username = flag.String("username", "", "XMPP username (JID)")
+var password = flag.String("password", "", "XMPP password")
+var status = flag.String("status", "", "status: away, chat, dnd, xa")
+var statusMessage = flag.String("status-message", "stdin", "status message")
+var subject = flag.String("subject", "", "XMPP MUC subject")
+var stdout = flag.String("stdout", "", "pipe stdin to this XMPP MUC (multiuser chatroom)")
+var resource = flag.String("resource", "xmppipe", "XMPP resource")
+var usetls = flag.Bool("tls", false, "enable use of old TLS")
 var debug = flag.Bool("debug", false, "enable debug output")
-var noeof = flag.Bool("noeof", false, "Don't exit when stdin is closed")
-var nosession = flag.Bool("nosession", false, "disable use of server session")
-var noverify = flag.Bool("noverify", false, "verify server SSL certificate")
-var sigpipe = flag.Bool("sigpipe", false, "Exit when stdout closes (no occupants in MUC)")
-var discard = flag.Bool("discard", false, "Discard stdout when no occupants")
-var discard_to_stdout = flag.Bool("discard-to-stdout", false, "Write discarded input to the local stdout")
-var keepalive = flag.Int("keepalive", 60, "Keepalive sent after inactivity (seconds)")
-var maxline = flag.Int("maxline", 10, "Number of lines to buffer before sending")
-var delay = flag.Int("delay", 100, "Timeout (ms) before sending accumulated lines as an XMPP message")
+var noeof = flag.Bool("noeof", false, "ignore close of stdin")
+var nosession = flag.Bool("no-session", false, "disable use of server session")
+var noverify = flag.Bool("no-verify", false, "ignore server SSL certificate verification errors")
+var sigpipe = flag.Bool("sigpipe", false, "exit when stdout closes (no occupants in MUC)")
+var discard = flag.Bool("discard", false, "discard stdout when no occupants in MUC")
+var discard_to_stdout = flag.Bool("discard-to-stdout", false, "write discarded input to the local stdout")
+var keepalive = flag.Int("keepalive", 60, "send keepalive after inactivity (seconds)")
+var maxline = flag.Int("maxline", 10, "number of lines to buffer before sending XMPP message")
+var delay = flag.Int("send-delay", 100, "timeout (ms) before sending XMPP message")
 
 func getenv(key *string, env string) {
 	if *key == "" {
