@@ -103,25 +103,22 @@ func main() {
 	servers := xmpp_lookup(*username, *server)
 
 	talk, err := xmpp_connect(servers)
-
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	muc, err := xmpp_joinmuc(talk, *username, *resource, *stdout, *subject)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("stdout:%s\n", muc)
+
+	event_loop(talk, muc)
+}
+
+func event_loop(talk *xmpp.Client, muc string) {
 	defer talk.Close()
-
-	if *stdout == "" {
-		*stdout = roomname(*username)
-		fmt.Printf("stdout:%s\n", *stdout)
-	}
-
-	talk.JoinMUC(*stdout, *resource)
-
-	if *subject != "" {
-		_, err = xmpp_subject(talk, *subject)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
 
 	var occupants int
 	jid := fmt.Sprintf("%s/%s", *stdout, *resource)
@@ -161,7 +158,7 @@ func main() {
 			msg <- in.buf
 			continue
 		case <-time.After(time.Duration(*keepalive) * time.Second):
-			_, err = talk.SendOrg(" ")
+			_, err := talk.SendOrg(" ")
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -334,6 +331,22 @@ func xmpp_subject(talk *xmpp.Client, subject string) (int, error) {
 		"<subject>%s</subject></message>",
 		xmlEscape(*stdout), "groupchat", xmlEscape(subject))
 	return talk.SendOrg(stanza)
+}
+
+func xmpp_joinmuc(talk *xmpp.Client, username, resource, stdout, subject string) (string, error) {
+	var err error
+
+	if stdout == "" {
+		stdout = roomname(username)
+	}
+
+	talk.JoinMUC(stdout, resource)
+
+	if subject != "" {
+		_, err = xmpp_subject(talk, subject)
+	}
+
+	return stdout, err
 }
 
 func roomname(jid string) string {
