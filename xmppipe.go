@@ -61,7 +61,7 @@ var discard = flag.Bool("discard", false, "discard stdout when no occupants in M
 var discard_to_stdout = flag.Bool("discard-to-stdout", false, "write discarded input to the local stdout")
 var keepalive = flag.Int("keepalive", 60, "send keepalive after inactivity (seconds)")
 var maxline = flag.Int("maxline", 10, "number of lines to buffer before sending XMPP message")
-var delay = flag.Int("send-delay", 100, "timeout (ms) before sending XMPP message")
+var delay = flag.Int("send-delay", 100, "timeout before sending XMPP message (ms)")
 
 func getenv(key *string, env string) {
 	if *key == "" {
@@ -110,7 +110,7 @@ func main() {
 	defer talk.Close()
 
 	if *stdout == "" {
-		*stdout = roomname()
+		*stdout = roomname(*username)
 		fmt.Printf("stdout:%s\n", *stdout)
 	}
 
@@ -336,8 +336,8 @@ func xmpp_subject(talk *xmpp.Client, subject string) (int, error) {
 	return talk.SendOrg(stanza)
 }
 
-func roomname() string {
-	tokens := strings.SplitN(*username, "@", 2)
+func roomname(jid string) string {
+	tokens := strings.SplitN(jid, "@", 2)
 	name, err := os.Hostname()
 	if err != nil {
 		name = "nohost"
