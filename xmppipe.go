@@ -50,6 +50,7 @@ var status = flag.String("status", "", "status: away, chat, dnd, xa")
 var statusMessage = flag.String("status-message", "stdin", "status message")
 var subject = flag.String("subject", "", "XMPP MUC subject")
 var stdout = flag.String("stdout", "", "pipe stdin to this XMPP MUC (multiuser chatroom)")
+var mucprefix = flag.String("muc-prefix", "conference", "domain prefix for MUC")
 var resource = flag.String("resource", "xmppipe", "XMPP resource")
 var usetls = flag.Bool("tls", false, "enable use of old TLS")
 var debug = flag.Bool("debug", false, "enable debug output")
@@ -121,13 +122,13 @@ func event_loop(talk *xmpp.Client, muc string) {
 	defer talk.Close()
 
 	var occupants int
-	jid := fmt.Sprintf("%s/%s", *stdout, *resource)
+	jid := fmt.Sprintf("%s/%s", muc, *resource)
 
-	signal := open_stdout(talk, jid)
+	signal := open_stdout(talk, jid, muc)
 	xmpp_waitjoin(signal, jid, &occupants)
 
 	eof := make(chan bool)
-	msg := xmpp_send(talk, *maxline, eof)
+	msg := xmpp_send(talk, muc, *maxline, eof)
 	stdin := open_stdin()
 
 	for {
@@ -173,7 +174,7 @@ EOF:
 func xmpp_roomcount(v xmpp.Presence, occupants *int) {
 	if v.Type == "" {
 		*occupants += 1
-	} else {
+	} else if v.Type == "unavailable" {
 		if *occupants > 0 {
 			*occupants -= 1
 		}
@@ -247,7 +248,7 @@ func open_stdin() chan stdio {
 	return stdin
 }
 
-func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
+func open_stdout(talk *xmpp.Client, jid, stdout string) chan xmpp.Presence {
 	signal := make(chan xmpp.Presence)
 
 	go func() {
@@ -258,7 +259,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 			}
 			switch v := chat.(type) {
 			case xmpp.Chat:
-				if v.Remote != jid && len(v.Other) == 0 {
+				if v.Remote != jid && v.Delay == nil {
 					fmt.Printf("%s:%s:%v:%s\n", tMessage, url.QueryEscape(v.Type),
 						url.QueryEscape(v.Remote), url.QueryEscape(v.Text))
 				}
@@ -266,7 +267,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 					fmt.Fprintf(os.Stderr, "%+v\n", v)
 				}
 			case xmpp.Presence:
-				if strings.HasPrefix(v.From, *stdout) {
+				if strings.HasPrefix(v.From, stdout) {
 					ptype := v.Type
 					if ptype == "" {
 						ptype = "available"
@@ -286,7 +287,7 @@ func open_stdout(talk *xmpp.Client, jid string) chan xmpp.Presence {
 	return signal
 }
 
-func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
+func xmpp_send(talk *xmpp.Client, stdout string, bufsz int, eof chan bool) chan string {
 	msg := make(chan string)
 	year := time.Hour * 24 * 365
 
@@ -308,7 +309,7 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 			case flush = <-eof:
 			case <-time.After(duration):
 			}
-			_, err := talk.Send(xmpp.Chat{Remote: *stdout, Type: "groupchat", Text: strings.Join(buf, "\n")})
+			_, err := talk.Send(xmpp.Chat{Remote: stdout, Type: "groupchat", Text: strings.Join(buf, "\n")})
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -326,10 +327,18 @@ func xmpp_send(talk *xmpp.Client, bufsz int, eof chan bool) chan string {
 	return msg
 }
 
-func xmpp_subject(talk *xmpp.Client, subject string) (int, error) {
+func xmpp_mucsubject(talk *xmpp.Client, subject string) (int, error) {
 	stanza := fmt.Sprintf("<message to='%s' type='%s'>"+
 		"<subject>%s</subject></message>",
 		xmlEscape(*stdout), "groupchat", xmlEscape(subject))
+	return talk.SendOrg(stanza)
+}
+
+func xmpp_mucunlock(talk *xmpp.Client, username, resource, stdout string) (int, error) {
+	stanza := fmt.Sprintf("<iq id='%s' to='%s' type='set'>"+
+		"<query xmlns='http://jabber.org/protocol/muc#owner'>"+
+		"<x xmlns='jabber:x:data' type='submit'/></query></iq>",
+		"create1", xmlEscape(stdout))
 	return talk.SendOrg(stanza)
 }
 
@@ -343,8 +352,10 @@ func xmpp_joinmuc(talk *xmpp.Client, username, resource, stdout, subject string)
 	talk.JoinMUC(stdout, resource)
 
 	if subject != "" {
-		_, err = xmpp_subject(talk, subject)
+		_, err = xmpp_mucsubject(talk, subject)
 	}
+
+	xmpp_mucunlock(talk, username, resource, stdout)
 
 	return stdout, err
 }
@@ -355,9 +366,10 @@ func roomname(jid string) string {
 	if err != nil {
 		name = "nohost"
 	}
-	return fmt.Sprintf("stdout-%s-%d@conference.%s",
+	return fmt.Sprintf("stdout-%s-%d@%s.%s",
 		name,
 		os.Getpid(),
+		*mucprefix,
 		tokens[1])
 }
 
